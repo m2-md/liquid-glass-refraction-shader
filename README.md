@@ -4,6 +4,8 @@
 **▶ [Live demo](https://m2-md.github.io/liquid-glass-refraction-shader/)** · [Source](https://github.com/m2-md/liquid-glass-refraction-shader)
 <!-- LINKS:END -->
 
+> Screen-space refraction in WebGL2: simulated index of refraction (IOR), chromatic dispersion, and Fresnel reflections compared against CSS backdrop-filter and SVG feDisplacementMap.
+
 The working code for the article "Blur Is Not Refraction: Liquid Glass, IOR and
 Chromatic Dispersion in WebGL2". Raw WebGL2 (GLSL ES 3.00), TypeScript, Vite,
 vitest. No Three.js, no post-processing library; the math on every line is
