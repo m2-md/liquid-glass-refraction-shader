@@ -1,5 +1,9 @@
 # Liquid Glass — Screen-Space Refraction · WebGL2 vs CSS
 
+<!-- LINKS:BEGIN — üretildi: scripts/sync-repo-links.py · elle düzenleme -->
+**▶ [Live demo](https://m2-md.github.io/liquid-glass-refraction-shader/)** · [Source](https://github.com/m2-md/liquid-glass-refraction-shader)
+<!-- LINKS:END -->
+
 The working code for the article "Blur Is Not Refraction: Liquid Glass, IOR and
 Chromatic Dispersion in WebGL2". Raw WebGL2 (GLSL ES 3.00), TypeScript, Vite,
 vitest. No Three.js, no post-processing library; the math on every line is
