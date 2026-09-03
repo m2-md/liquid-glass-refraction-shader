@@ -5,7 +5,7 @@ const small = { width: 64, height: 40, radius: 10, bevel: 8, thickness: 6 };
 const panel = { width: 420, height: 260, radius: 40, bevel: 34, thickness: 6 };
 
 describe("buildDisplacementRGBA", () => {
-  it("merkez piksel nötr kodlanır (0.5, 0.5)", () => {
+  it("encodes the center pixel as neutral (0.5, 0.5)", () => {
     const shape = { width: 64, height: 40, radius: 10, bevel: 8, thickness: 6 };
     const data = buildDisplacementRGBA(shape);
     const i = ((shape.height / 2) * shape.width + shape.width / 2) * 4;
@@ -13,12 +13,12 @@ describe("buildDisplacementRGBA", () => {
     expect(data[i + 1]).toBe(128);
   });
 
-  it("piksel başına dört bayt üretir", () => {
+  it("produces four bytes per pixel", () => {
     const data = buildDisplacementRGBA(small);
     expect(data.length).toBe(small.width * small.height * 4);
   });
 
-  it("alfa hep 255, mavi kanal hep 0", () => {
+  it("keeps alpha at 255 and the blue channel at 0", () => {
     const data = buildDisplacementRGBA(small);
     for (let i = 0; i < data.length; i += 4) {
       expect(data[i + 2]).toBe(0);
@@ -26,20 +26,20 @@ describe("buildDisplacementRGBA", () => {
     }
   });
 
-  it("x ekseninde 128 etrafında simetriktir", () => {
+  it("is symmetric around 128 on the x axis", () => {
     const data = buildDisplacementRGBA(panel);
     const y = 130;
     for (const x of [4, 40, 120, 209]) {
       const a = data[(y * panel.width + x) * 4];
       const b = data[(y * panel.width + (panel.width - 1 - x)) * 4];
-      // Yuvarlama 128'in iki yanına birer birim kayabilir.
+      // Rounding can drift by one unit on either side of 128.
       expect(Math.abs(a - 128 + (b - 128))).toBeLessThanOrEqual(1);
     }
   });
 
-  it("pahta kayma içeri doğrudur", () => {
-    // Kırılma örneği panelin içine doğru taşıyor: sağ pahta x sapması negatif,
-    // alt pahta y sapması negatif (SVG'nin y-aşağı çerçevesinde yukarı).
+  it("points the displacement inward on the bevel", () => {
+    // The refracted sample moves inward: on the right bevel the x offset is negative,
+    // on the bottom bevel the y offset is negative (upward in SVG's y-down frame).
     const data = buildDisplacementRGBA(panel);
     const right = (130 * panel.width + 410) * 4;
     const bottom = (250 * panel.width + 210) * 4;
@@ -47,7 +47,7 @@ describe("buildDisplacementRGBA", () => {
     expect(data[bottom + 1]).toBeLessThan(128);
   });
 
-  it("platoda nötr, pahta nötr değil", () => {
+  it("is neutral on the plateau and not neutral on the bevel", () => {
     const data = buildDisplacementRGBA(panel);
     const plateau = (130 * panel.width + 210) * 4;
     const bevel = (130 * panel.width + 405) * 4;

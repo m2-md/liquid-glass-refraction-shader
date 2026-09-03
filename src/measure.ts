@@ -1,6 +1,6 @@
-// measure.ts — `?measure=1` deterministik ölçüm modu.
-// Sabit arka tampon, sabit zaman adımı, kapalı etkileşim. Sonunda konsola
-// TEK satır: MEASURE {...}
+// measure.ts — the `?measure=1` deterministic measurement mode.
+// Fixed backing buffer, fixed time step, interaction off. At the end, ONE line
+// on the console: MEASURE {...}
 
 import { setCssMode, backdropFilterUrlSyntaxSupported } from "./css-glass";
 import { coveragePct } from "./coverage";
@@ -20,7 +20,7 @@ export const MEASURE_WIDTH = 960;
 export const MEASURE_HEIGHT = 540;
 export const WARMUP_FRAMES = 30;
 export const SAMPLE_FRAMES = 180;
-/** Fiziksel referans: abbeSpread(1.5168, 64.17) ≈ 0.00805 */
+/** Physical reference: abbeSpread(1.5168, 64.17) ≈ 0.00805 */
 export const PHYSICAL_SPREAD = 0.00805;
 export const ART_SPREAD = 0.15;
 
@@ -30,7 +30,7 @@ export interface FrameStats {
   droppedFrames: number;
 }
 
-/** Vsync aralığının 1.5 katını aşan her kare "atlanmış" sayılır. */
+/** Any frame longer than 1.5× the vsync interval counts as "dropped". */
 export function frameStats(
   deltas: readonly number[],
   vsyncMs = 16.67,
@@ -43,9 +43,9 @@ export function frameStats(
 }
 
 /**
- * Vsync'e takılmış satır kıyas için işe yaramaz; gizlemek yerine işaretliyoruz.
- * Eşik 60 Hz varsayılmıyor: ekranın gerçek kare periyodu koşunun başında
- * boş bir rAF penceresiyle ölçülüyor (120 Hz'de tavan 8,3 ms).
+ * A vsync-bound row is useless for comparison; instead of hiding it, we flag it.
+ * The threshold does not assume 60 Hz: the display's real frame period is measured
+ * at the start of the run with an empty rAF window (at 120 Hz the ceiling is 8.3 ms).
  */
 export function isVsyncBound(frameMsMedian: number, vsyncMs: number): boolean {
   return Number.isFinite(frameMsMedian) && frameMsMedian <= vsyncMs * 1.15;
@@ -91,7 +91,7 @@ export interface MeasureResult {
   userAgent: string;
   dpr: number;
   backing: { w: number; h: number };
-  /** Ölçülen ekran kare periyodu; vsyncBound eşiği buradan çıkıyor. */
+  /** Measured display frame period; the vsyncBound threshold comes from here. */
   vsyncMs: number;
   timerExt: boolean;
   cssFilterUrlSyntaxSupported: boolean;
@@ -118,7 +118,7 @@ function nextFrame(): Promise<number> {
 }
 
 function assertVisible(): void {
-  // Gizli sekmede rAF kısılır; ölçüm çöp olur. Uydurmaktansa iptal et.
+  // rAF is throttled in a hidden tab; the measurement is garbage. Abort, don't invent.
   if (document.visibilityState !== "visible") {
     throw new MeasureAborted("hidden");
   }
@@ -136,8 +136,8 @@ interface RunWindow {
 }
 
 /**
- * Ekranın gerçek kare periyodu. 60 Hz varsaymak 120 Hz'lik bir ekranda
- * tavana dayanmış her satırı "takılı değil" diye işaretler.
+ * The display's real frame period. Assuming 60 Hz would mark every row pinned to
+ * the ceiling on a 120 Hz display as "not bound".
  */
 async function measureRefreshMs(): Promise<number> {
   const deltas: number[] = [];
@@ -152,7 +152,7 @@ async function measureRefreshMs(): Promise<number> {
   return Number.isFinite(m) && m > 0 ? m : 16.67;
 }
 
-/** Bir yapılandırmayı sabit zaman adımıyla koşturup rAF ve GPU örneği toplar. */
+/** Runs one configuration with a fixed time step and collects rAF and GPU samples. */
 async function collect(
   renderer: Renderer,
   vsyncMs: number,
@@ -163,7 +163,7 @@ async function collect(
   for (let f = 0; f < WARMUP_FRAMES + SAMPLE_FRAMES; f++) {
     const now = await nextFrame();
     assertVisible();
-    renderer.renderFrame(f / 60); // sabit zaman adımı: performance.now() sürmüyor
+    renderer.renderFrame(f / 60); // fixed time step: performance.now() is not driving it
     if (f === WARMUP_FRAMES) renderer.timer.reset();
     if (f >= WARMUP_FRAMES && Number.isFinite(previous)) {
       deltas.push(now - previous);
@@ -215,7 +215,7 @@ export async function runMeasurement(
     hooks.progress(done, TOTAL_RUNS, label);
   };
 
-  // ——— Faz A: dispersiyon örnek taraması ———
+  // ——— Phase A: dispersion sample sweep ———
   const dispersion: DispersionPoint[] = [];
   for (const samples of [1, 3, 8]) {
     renderer.params.samples = samples;
@@ -227,7 +227,7 @@ export async function runMeasurement(
       frameMsMedian: round(w.stats.frameMsMedian, 4),
       vsyncBound: isVsyncBound(w.stats.frameMsMedian, vsyncMs),
     });
-    tick(`dispersiyon ${samples}`);
+    tick(`dispersion ${samples}`);
   }
 
   const at = (n: number): DispersionPoint | undefined =>
@@ -241,7 +241,7 @@ export async function runMeasurement(
     : (eight?.frameMsMedian ?? Number.NaN);
   const msPerSample = (hi - lo) / 7;
 
-  // ——— Faz B: arka plan doku ölçeği taraması ———
+  // ——— Phase B: backdrop texture scale sweep ———
   renderer.params.samples = 3;
   const backdropScale: BackdropScalePoint[] = [];
   for (const scale of [1, 0.5, 0.25]) {
@@ -254,20 +254,20 @@ export async function runMeasurement(
       vsyncBound: isVsyncBound(w.stats.frameMsMedian, vsyncMs),
       vramBytes: backdropBytes(MEASURE_WIDTH, MEASURE_HEIGHT, scale).total,
     });
-    tick(`arka plan ölçeği ${scale}`);
+    tick(`backdrop scale ${scale}`);
   }
   renderer.setBackdropScale(1);
 
-  // ——— Faz C: saçak ölçümü (readPixels) ———
+  // ——— Phase C: fringe measurement (readPixels) ———
   const fringe: FringePoint[] = [];
   for (const spread of [PHYSICAL_SPREAD, ART_SPREAD]) {
     fringe.push(await measureFringe(renderer, spread));
-    tick(`saçak ${spread}`);
+    tick(`fringe ${spread}`);
   }
   renderer.params.mode = MODE_GLASS;
   renderer.params.spread = ART_SPREAD;
 
-  // ——— Faz D: beş yol kıyası ———
+  // ——— Phase D: five-path comparison ———
   const paths: PathPoint[] = [];
   const setups = [
     { label: "baseline", webgl: false, css: "none" },
@@ -287,13 +287,13 @@ export async function runMeasurement(
       frameMsMedian: round(w.stats.frameMsMedian, 4),
       frameMsP95: round(w.stats.frameMsP95, 4),
       droppedFrames: w.stats.droppedFrames,
-      // CSS satırlarında GPU saati YOK: filtre compositor'da koşuyor.
+      // NO GPU clock on the CSS rows: the filter runs in the compositor.
       gpuMsMedian:
         cssRow || w.gpuMsMedian === null ? null : round(w.gpuMsMedian, 4),
       vsyncBound: isVsyncBound(w.stats.frameMsMedian, vsyncMs),
-      ...(cssRow ? { gpuMsNote: "compositor — ölçülemez" } : {}),
+      ...(cssRow ? { gpuMsNote: "compositor — not measurable" } : {}),
     });
-    tick(`yol ${setup.label}`);
+    tick(`path ${setup.label}`);
   }
   setCssMode(glassElement, "none");
 

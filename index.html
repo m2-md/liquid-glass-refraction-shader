@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,16 +7,17 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%237fd1ff'/%3E%3C/svg%3E"
     />
-    <title>Sıvı Cam — WebGL2 kırılma vs CSS backdrop-filter</title>
+    <title>Liquid Glass — WebGL2 refraction vs CSS backdrop-filter</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <main>
-      <h1>Bulanıklık kırılma değildir — aynı panel, iki yol</h1>
+      <h1>Blur is not refraction — same panel, two paths</h1>
       <p class="lede">
-        Arka plan her iki modda da aynı WebGL2 canvas'ında çiziliyor. Değişen
-        tek şey panelin nasıl kurulduğu: FBO + <code>refract()</code> shader'ı ya
-        da <code>backdrop-filter</code> + SVG <code>feDisplacementMap</code>.
+        The backdrop is drawn on the same WebGL2 canvas in both modes. The only
+        thing that changes is how the panel is built: an FBO + a
+        <code>refract()</code> shader, or <code>backdrop-filter</code> + an SVG
+        <code>feDisplacementMap</code>.
       </p>
 
       <p id="banner" hidden></p>
@@ -29,7 +30,7 @@
         <div id="hud"></div>
       </div>
 
-      <!-- Ekranda görünmeyen filtre tanımları -->
+      <!-- Filter definitions, never visible on screen -->
       <svg class="filter-defs" aria-hidden="true" width="0" height="0">
         <filter
           id="liquid-glass"
@@ -137,21 +138,21 @@
 
       <div class="controls">
         <label class="field">
-          <span>Yol</span>
+          <span>Path</span>
           <select id="path">
-            <option value="none">panel yok</option>
-            <option value="webgl" selected>WebGL cam</option>
+            <option value="none">no panel</option>
+            <option value="webgl" selected>WebGL glass</option>
             <option value="css-blur">CSS blur(2px)</option>
             <option value="css-displace">CSS blur + displacement</option>
-            <option value="css-rgb">CSS blur + üç dallı RGB</option>
+            <option value="css-rgb">CSS blur + three-branch RGB</option>
           </select>
         </label>
         <label class="field">
-          <span>Görüntü modu</span>
+          <span>View mode</span>
           <select id="view">
-            <option value="0" selected>cam</option>
+            <option value="0" selected>glass</option>
             <option value="1">normal</option>
-            <option value="2">saçak</option>
+            <option value="2">fringe</option>
           </select>
         </label>
         <label class="field">
@@ -159,31 +160,31 @@
           <input id="ior" type="range" min="1" max="2.5" step="0.01" />
         </label>
         <label class="field">
-          <span>Yayılım <b id="spread-out">0.15</b></span>
+          <span>Spread <b id="spread-out">0.15</b></span>
           <input id="spread" type="range" min="0" max="0.4" step="0.005" />
         </label>
         <label class="field">
-          <span>Dispersiyon örneği</span>
+          <span>Dispersion samples</span>
           <select id="samples">
-            <option value="1">1 (kapalı)</option>
+            <option value="1">1 (off)</option>
             <option value="3" selected>3</option>
             <option value="8">8</option>
           </select>
         </label>
         <label class="field">
-          <span>Pah genişliği <b id="bevel-out">34</b></span>
+          <span>Bevel width <b id="bevel-out">34</b></span>
           <input id="bevel" type="range" min="4" max="80" step="1" />
         </label>
         <label class="field">
-          <span>Kalınlık <b id="thickness-out">6</b></span>
+          <span>Thickness <b id="thickness-out">6</b></span>
           <input id="thickness" type="range" min="1" max="20" step="0.5" />
         </label>
         <label class="field">
-          <span>Kırılma derinliği <b id="depth-out">90</b></span>
+          <span>Refraction depth <b id="depth-out">90</b></span>
           <input id="depth" type="range" min="0" max="220" step="1" />
         </label>
         <label class="field">
-          <span>Arka plan doku ölçeği</span>
+          <span>Backdrop texture scale</span>
           <select id="backdropScale">
             <option value="1" selected>1.00×</option>
             <option value="0.5">0.50×</option>
@@ -191,7 +192,7 @@
           </select>
         </label>
         <label class="field">
-          <span>Çözünürlük ölçeği</span>
+          <span>Resolution scale</span>
           <select id="scale">
             <option value="0.5">0.5×</option>
             <option value="0.75" selected>0.75×</option>
@@ -199,15 +200,15 @@
           </select>
         </label>
         <div class="field">
-          <span>Döngü</span>
-          <button id="toggle" type="button">Dur</button>
+          <span>Loop</span>
+          <button id="toggle" type="button">Pause</button>
         </div>
       </div>
 
       <footer>
-        Deterministik ölçüm için adrese <code>?measure=1</code> ekleyin; konsola
-        tek satır <code>MEASURE {…}</code> düşer. Ölçüm sırasında sekmeyi ön
-        planda tutun.
+        Add <code>?measure=1</code> to the address for a deterministic run; a
+        single <code>MEASURE {…}</code> line lands on the console. Keep the tab in
+        the foreground while it measures.
       </footer>
     </main>
     <script type="module" src="/src/main.ts"></script>

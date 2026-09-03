@@ -12,8 +12,8 @@ const sources: Array<[string, string]> = [
   ["panel.vert", panelVert],
 ];
 
-describe("shader kaynakları", () => {
-  it("#version 300 es her dosyanın İLK satırı", () => {
+describe("shader sources", () => {
+  it("has #version 300 es as the FIRST line of every file", () => {
     for (const [name, source] of sources) {
       expect(`${name}: ${source.split("\n")[0]}`).toBe(
         `${name}: #version 300 es`,
@@ -21,42 +21,42 @@ describe("shader kaynakları", () => {
     }
   });
 
-  it("hiçbiri boş değil", () => {
+  it("has no empty source", () => {
     for (const [, source] of sources) {
       expect(source.length).toBeGreaterThan(100);
     }
   });
 });
 
-describe("glass.frag sabitleri", () => {
-  it("FRINGE_SCALE, fringe.ts'teki FRINGE_SCALE_PX ile aynı", () => {
+describe("glass.frag constants", () => {
+  it("keeps FRINGE_SCALE equal to FRINGE_SCALE_PX in fringe.ts", () => {
     const match = /#define\s+FRINGE_SCALE\s+([0-9.]+)/.exec(glassFrag);
     expect(match).not.toBeNull();
     expect(Number(match?.[1])).toBe(FRINGE_SCALE_PX);
   });
 
-  it("MAX_SAMPLES tanımlı ve döngü tavanı ile aynı", () => {
+  it("defines MAX_SAMPLES and matches the loop ceiling", () => {
     const match = /#define\s+MAX_SAMPLES\s+(\d+)/.exec(glassFrag);
     expect(match).not.toBeNull();
     expect(Number(match?.[1])).toBe(8);
     expect(glassFrag).toContain("for (int i = 0; i < MAX_SAMPLES; i++)");
   });
 
-  it("üç görüntü modu da tanımlı", () => {
+  it("defines all three view modes", () => {
     for (const mode of ["MODE_GLASS 0", "MODE_NORMAL 1", "MODE_FRINGE 2"]) {
       expect(glassFrag).toContain(`#define ${mode}`);
     }
   });
 
-  it("sdf2d.ts'teki üç fonksiyonun GLSL ikizi de burada", () => {
+  it("carries the GLSL twin of all three functions in sdf2d.ts", () => {
     expect(glassFrag).toContain("float sdRoundedBox(vec2 p, vec2 b, float r)");
     expect(glassFrag).toContain("float glassHeight(float d, float w)");
     expect(glassFrag).toContain("vec3 glassNormal(");
   });
 });
 
-describe("vertex shader'ları attribute kullanmıyor", () => {
-  it("panel ve blit yalnızca gl_VertexID okuyor", () => {
+describe("vertex shaders use no attributes", () => {
+  it("makes panel and blit read only gl_VertexID", () => {
     for (const source of [blitVert, panelVert]) {
       expect(source).toContain("gl_VertexID");
       expect(source).not.toContain("in vec");

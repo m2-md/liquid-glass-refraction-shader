@@ -1,4 +1,4 @@
-/** Yuvarlatılmış dikdörtgenin alanı: dört köşeden (4 - π)r² kadar eksiliyor. */
+/** Area of a rounded rectangle: the four corners take away (4 - π)r². */
 export function roundedRectArea(w: number, h: number, r: number): number {
   const rr = Math.min(Math.max(r, 0), Math.min(w, h) / 2);
   return w * h - (4 - Math.PI) * rr * rr;

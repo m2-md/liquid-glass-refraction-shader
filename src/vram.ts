@@ -4,7 +4,7 @@ export interface BackdropVram {
   total: number;
 }
 
-/** RGBA8 hedefler: piksel başına 4 bayt. */
+/** RGBA8 targets: 4 bytes per pixel. */
 export function backdropBytes(
   width: number,
   height: number,

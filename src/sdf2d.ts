@@ -1,13 +1,13 @@
-// sdf2d.ts — glass.frag.glsl içindeki sdRoundedBox / glassHeight / glassNormal
-// fonksiyonlarının matematiksel ikizi. İmzalar ve parametre sırası birebir aynı.
-// Sürüklenirse CSS displacement haritası shader'dan başka bir şekil üretir.
+// sdf2d.ts — the mathematical twin of the sdRoundedBox / glassHeight / glassNormal
+// functions inside glass.frag.glsl. Signatures and parameter order are identical.
+// If they drift, the CSS displacement map produces a different shape than the shader.
 
 import type { Vec3 } from "./optics";
 
 export type Vec2 = readonly [number, number];
 export type { Vec3 };
 
-/** p: panel merkezine göre koordinat, b: yarı boyut, r: köşe yarıçapı. */
+/** p: coordinate relative to the panel center, b: half size, r: corner radius. */
 export function sdRoundedBox(p: Vec2, b: Vec2, r: number): number {
   const qx = Math.abs(p[0]) - b[0] + r;
   const qy = Math.abs(p[1]) - b[1] + r;
@@ -17,8 +17,8 @@ export function sdRoundedBox(p: Vec2, b: Vec2, r: number): number {
 }
 
 /**
- * d: kenara işaretli mesafe (içeride negatif), w: pah genişliği.
- * Kenarda 0, pahın bittiği yerde 1 döner.
+ * d: signed distance to the edge (negative inside), w: bevel width.
+ * Returns 0 at the edge and 1 where the bevel ends.
  */
 export function glassHeight(d: number, w: number): number {
   const x = Math.min(Math.max(-d / Math.max(w, 1e-3), 0), 1);

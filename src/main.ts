@@ -32,7 +32,7 @@ import {
 
 function need<T extends Element>(selector: string): T {
   const el = document.querySelector<T>(selector);
-  if (!el) throw new Error(`DOM düğümü yok: ${selector}`);
+  if (!el) throw new Error(`No DOM node: ${selector}`);
   return el;
 }
 
@@ -55,8 +55,8 @@ const depthInput = need<HTMLInputElement>("#depth");
 
 const supported = backdropFilterUrlSyntaxSupported();
 badge.innerHTML = supported
-  ? "backdrop-filter <code>url()</code> sözdizimi: <b>destekleniyor</b> — bu bir sözdizimi kontrolüdür, davranış garantisi değildir."
-  : "backdrop-filter <code>url()</code> sözdizimi: <b>desteklenmiyor</b> — CSS yolu yalnızca blur uygular.";
+  ? "backdrop-filter <code>url()</code> syntax: <b>supported</b> — this is a syntax check, not a guarantee of behavior."
+  : "backdrop-filter <code>url()</code> syntax: <b>not supported</b> — the CSS path applies blur only.";
 
 let renderer: Renderer;
 try {
@@ -65,7 +65,7 @@ try {
   canvas.remove();
   cssGlass.remove();
   banner.hidden = false;
-  banner.textContent = `Bu tarayıcıda WebGL2 yok, demo çalışamaz. (${String(error)})`;
+  banner.textContent = `This browser has no WebGL2, the demo cannot run. (${String(error)})`;
   throw error;
 }
 
@@ -78,7 +78,7 @@ canvas.addEventListener(
     event.preventDefault();
     setRunning(false);
     banner.hidden = false;
-    banner.textContent = "WebGL bağlamı kayboldu. Sayfayı yenileyin.";
+    banner.textContent = "The WebGL context was lost. Reload the page.";
   },
   false,
 );
@@ -146,14 +146,14 @@ function loop(now: number): void {
 function setRunning(next: boolean): void {
   if (next === running) return;
   running = next;
-  toggleButton.textContent = running ? "Dur" : "Devam";
+  toggleButton.textContent = running ? "Pause" : "Resume";
   if (running) {
     hud.setNote("");
     previous = Number.NaN;
     frameId = requestAnimationFrame(loop);
   } else {
     cancelAnimationFrame(frameId);
-    hud.setNote("Döngü duraklatıldı — sayaçlar donduruldu.");
+    hud.setNote("Loop paused — counters frozen.");
   }
 }
 
@@ -243,17 +243,17 @@ if (isMeasureMode(location.search)) {
   running = false;
   applyDisplacementMap(shape);
   mapDirty = false;
-  hud.setNote("Deterministik ölçüm hazırlanıyor…");
+  hud.setNote("Preparing the deterministic measurement…");
 
   runMeasurement(renderer, cssGlass, {
     progress(done, total, label) {
-      hud.setNote(`ölçüm: ${done}/${total} — ${label}`);
+      hud.setNote(`measurement: ${done}/${total} — ${label}`);
     },
   })
     .then((result) => {
       console.log(formatMeasureLine(result));
       hud.setInfo({
-        path: "ölçüm bitti",
+        path: "measurement done",
         samples: 3,
         ior: 1.52,
         spread: 0.15,
@@ -267,17 +267,17 @@ if (isMeasureMode(location.search)) {
       const webgl = result.paths.find((p) => p.label === "webgl-glass");
       const css = result.paths.find((p) => p.label === "css-displace");
       hud.setNote(
-        `ölçüm bitti · WebGL ${webgl?.frameMsMedian.toFixed(2) ?? "—"} ms · ` +
+        `measurement done · WebGL ${webgl?.frameMsMedian.toFixed(2) ?? "—"} ms · ` +
           `CSS displace ${css?.frameMsMedian.toFixed(2) ?? "—"} ms · ` +
-          `saçak ${result.fringe.map((f) => f.maxSeparationPx.toFixed(3)).join(" / ")} px · ` +
-          `GPU ms/örnek ${result.msPerSample.toFixed(4)} (${result.msPerSampleMethod})`,
+          `fringe ${result.fringe.map((f) => f.maxSeparationPx.toFixed(3)).join(" / ")} px · ` +
+          `GPU ms/sample ${result.msPerSample.toFixed(4)} (${result.msPerSampleMethod})`,
       );
       hud.render(true);
     })
     .catch((error: unknown) => {
       const reason = error instanceof MeasureAborted ? error.message : "failed";
       console.log(formatMeasureLine({ error: reason }));
-      hud.setNote(`ölçüm iptal edildi: ${reason}`);
+      hud.setNote(`measurement aborted: ${reason}`);
     });
 } else {
   wireControls();

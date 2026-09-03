@@ -1,212 +1,224 @@
-# Sıvı Cam — Ekran Uzayında Kırılma · WebGL2'ye Karşı CSS
+# Liquid Glass — Screen-Space Refraction · WebGL2 vs CSS
 
-"Bulanıklık Kırılma Değildir: WebGL2'de Sıvı Cam, IOR ve Kromatik Dispersiyon"
-makalesinin çalışan kodu. Ham WebGL2 (GLSL ES 3.00), TypeScript, Vite, vitest.
-Three.js yok, post-processing kütüphanesi yok; her satırın matematiği elle
-yazılı.
+The working code for the article "Blur Is Not Refraction: Liquid Glass, IOR and
+Chromatic Dispersion in WebGL2". Raw WebGL2 (GLSL ES 3.00), TypeScript, Vite,
+vitest. No Three.js, no post-processing library; the math on every line is
+written by hand.
 
-Aynı sıvı cam paneli iki kez kuruluyor:
+The same liquid glass panel is built twice:
 
-- **WebGL yolu** — arka plan bir FBO'ya çiziliyor, panel o dokuyu `refract()` ile
-  bükerek örnekliyor. IOR gerçek bir malzeme sabiti, dispersiyon kanal başına
-  ayrı `eta`, kenar parlaması Schlick–Fresnel.
-- **CSS yolu** — aynı canvas'ın üzerine mutlak konumlu bir `<div>`,
-  `backdrop-filter: blur(2px) url(#liquid-glass)` ve çalışma anında üretilen bir
-  SVG `feDisplacementMap` haritası.
+- **The WebGL path** — the backdrop is drawn into an FBO, and the panel samples
+  that texture by bending it with `refract()`. IOR is a real material constant,
+  dispersion is a separate `eta` per channel, the edge glow is Schlick–Fresnel.
+- **The CSS path** — an absolutely positioned `<div>` on top of the same canvas,
+  `backdrop-filter: blur(2px) url(#liquid-glass)` and an SVG
+  `feDisplacementMap` map generated at runtime.
 
-Arka plan **her iki modda da** aynı WebGL canvas'ında çiziliyor; değişen tek şey
-panelin nasıl kurulduğu. Kıyas bu yüzden adil.
+The backdrop is drawn on the same WebGL canvas **in both modes**; the only thing
+that changes is how the panel is built. That is what makes the comparison fair.
 
-## Ne içerir
+## What is in here
 
-- **İki geçişli kare akışı** (`src/fbo.ts`, `src/renderer.ts`) — arka plan bir
-  kez FBO'ya çiziliyor, `blitFramebuffer` ile ekrana kopyalanıyor, camın
-  okuyacağı kopya istenirse ayrı bir ölçekte tutuluyor. `CLAMP_TO_EDGE` şart:
-  kırılan örnek doku dışına taşıyor.
-- **Cam shader'ı** (`src/shaders/glass.frag.glsl`) — 2B `sdRoundedBox`, çeyrek
-  daire kesitli pah profili, gradyandan normal, `refract()` tabanlı ekran uzayı
-  kayması, spektrum taramalı dispersiyon, Schlick–Fresnel, üç görüntü modu
-  (cam / normal / saçak).
-- **Panelin kendi quad'ı** (`src/shaders/panel.vert.glsl`) — attribute yok, dört
-  köşe `gl_VertexID`'den. Fragment maliyeti ekranın değil **panelin** alanıyla
-  orantılı.
-- **CSS ikizi** (`src/displacement-map.ts`, `src/css-glass.ts`) — displacement
-  haritası shader'la **aynı** `sdRoundedBox` / `glassNormal` fonksiyonlarının
-  TypeScript ikizlerinden üretiliyor, PNG data URL olarak `feImage`'a bağlanıyor.
-- **GPU saati** (`src/gpu-timer.ts`) — `EXT_disjoint_timer_query_webgl2`; sorgu
-  kuyruğu, `GPU_DISJOINT_EXT` kontrolü, `gl.finish()` YOK. Uzantı yoksa HUD ve
-  ölçüm çıktısı bunu açıkça söyler ve rAF delta medyanına düşer.
-- **Saf mantık katmanı** (`src/optics.ts`, `src/sdf2d.ts`, `src/stats.ts`,
-  `src/viewport.ts`, `src/vram.ts`, `src/coverage.ts`, `src/fringe.ts`) —
-  GLSL'in TypeScript aynası; tarayıcısız, vitest ile test ediliyor.
+- **Two-pass frame flow** (`src/fbo.ts`, `src/renderer.ts`) — the backdrop is
+  drawn into the FBO once, copied to the screen with `blitFramebuffer`, and the
+  copy the glass reads is kept at a separate scale if you ask for it.
+  `CLAMP_TO_EDGE` is required: the refracted sample runs past the texture.
+- **The glass shader** (`src/shaders/glass.frag.glsl`) — 2D `sdRoundedBox`, a
+  quarter-circle bevel profile, a normal from the gradient, a `refract()`-based
+  screen-space offset, dispersion by spectrum sweep, Schlick–Fresnel, three view
+  modes (glass / normal / fringe).
+- **The panel's own quad** (`src/shaders/panel.vert.glsl`) — no attributes, the
+  four corners come from `gl_VertexID`. Fragment cost is proportional to the
+  area of the **panel**, not of the screen.
+- **The CSS twin** (`src/displacement-map.ts`, `src/css-glass.ts`) — the
+  displacement map is generated from the TypeScript twins of the **same**
+  `sdRoundedBox` / `glassNormal` functions used by the shader, and bound to
+  `feImage` as a PNG data URL.
+- **The GPU clock** (`src/gpu-timer.ts`) — `EXT_disjoint_timer_query_webgl2`; a
+  query queue, a `GPU_DISJOINT_EXT` check, NO `gl.finish()`. If the extension is
+  missing, the HUD and the measurement output say so plainly and fall back to
+  the median rAF delta.
+- **The pure logic layer** (`src/optics.ts`, `src/sdf2d.ts`, `src/stats.ts`,
+  `src/viewport.ts`, `src/vram.ts`, `src/coverage.ts`, `src/fringe.ts`) — the
+  TypeScript mirror of the GLSL; browserless, tested with vitest.
 
-## Kurulum
+## Install
 
 ```bash
 npm install
 ```
 
-## Test (tarayıcısız, deterministik)
+## Tests (browserless, deterministic)
 
 ```bash
 npm test
 ```
 
-**84 test yeşil** (10 dosya): optik (15), 2B SDF ve normal (12), viewport
-kelepçeleri (9), medyan/yüzdelik (8), kare istatistiği + ölçüm modu (9), shader
-kaynağı (7), kapsama (7), displacement haritası (6), saçak kod çözme (6), VRAM
-hesabı (5). Hiçbir test dosyası `document`, `window`, `navigator`,
-`WebGL2RenderingContext` ya da `performance` referansı içermez.
+**84 tests green** (10 files): optics (15), 2D SDF and normals (12), viewport
+clamps (9), median/percentile (8), frame statistics + measurement mode (9),
+shader source (7), coverage (7), displacement map (6), fringe decoding (6),
+VRAM math (5). No test file references `document`, `window`, `navigator`,
+`WebGL2RenderingContext` or `performance`.
 
-## Tip kontrolü ve build
+## Type check and build
 
 ```bash
-npx tsc --noEmit   # 0 hata
+npx tsc --noEmit   # 0 errors
 npm run build      # tsc && vite build -> dist/
 ```
 
-GLSL derlenmez; shader'ın gerçekten derlendiğini yalnızca tarayıcı gösterir.
+GLSL is not compiled here; only the browser shows you that the shader really
+compiles.
 
-## Demo (`file://` DEĞİL)
+## Demo (NOT `file://`)
 
 ```bash
 npm run dev
 # http://localhost:5173/
 ```
 
-Varsayılan ayarlar mütevazı: sahne 960×540 CSS (tam ekran değil), çözünürlük
-ölçeği 0.75, dispersiyon 3 örnek, arka plan doku ölçeği 1.0.
+The defaults are modest: a 960×540 CSS stage (not fullscreen), a resolution
+scale of 0.75, 3 dispersion samples, a backdrop texture scale of 1.0.
 
-| Kontrol                 | Değerler                                        | Varsayılan |
+| Control                 | Values                                          | Default    |
 | ----------------------- | ----------------------------------------------- | ---------- |
-| Yol                     | panel yok / WebGL / CSS blur / displace / RGB   | WebGL      |
-| Görüntü modu            | cam / normal / saçak                            | cam        |
+| Path                    | no panel / WebGL / CSS blur / displace / RGB    | WebGL      |
+| View mode               | glass / normal / fringe                         | glass      |
 | IOR                     | 1.0 – 2.5                                       | 1.52       |
-| Yayılım (`spread`)      | 0 – 0.4                                         | 0.15       |
-| Dispersiyon örneği      | 1 / 3 / 8                                       | 3          |
-| Pah genişliği           | 4 – 80 px                                       | 34         |
-| Kalınlık                | 1 – 20                                          | 6          |
-| Kırılma derinliği       | 0 – 220 px                                      | 90         |
-| Arka plan doku ölçeği   | 1.00 / 0.50 / 0.25                              | 1.00       |
-| Çözünürlük ölçeği       | 0.5 / 0.75 / 1.0                                | 0.75       |
-| Dur/Devam               | —                                               | çalışıyor  |
+| Spread (`spread`)       | 0 – 0.4                                         | 0.15       |
+| Dispersion samples      | 1 / 3 / 8                                       | 3          |
+| Bevel width             | 4 – 80 px                                       | 34         |
+| Thickness               | 1 – 20                                          | 6          |
+| Refraction depth        | 0 – 220 px                                      | 90         |
+| Backdrop texture scale  | 1.00 / 0.50 / 0.25                              | 1.00       |
+| Resolution scale        | 0.5 / 0.75 / 1.0                                | 0.75       |
+| Pause/Resume            | —                                               | running    |
 
-Ne göreceksiniz:
+What you will see:
 
-- **WebGL yolu:** panelin ortasındaki desen kıpırdamıyor (normal `(0,0,1)`,
-  kırılma sıfır), kenara doğru kayma artıyor. Kenarda Fresnel parlaması var.
-- **`normal` modu:** pahın nerede başlayıp bittiği renk olarak görünüyor;
-  plato düz mavi (`(0,0,1)`), pah yana yatıyor.
-- **`saçak` modu:** arka plan çizilmiyor, panel dışı siyah; pah bölgesi kırmızıya
-  doğru artıyor. Kırmızı kanal kanallar arası ayrımı `32 px` tavanla kodluyor.
-- **Yayılımı büyütünce** kenarda turuncu/mavi saçak; örnek sayısını 3'ten 8'e
-  çıkarınca saçak yumuşuyor.
-- **IOR = 1.0** yapınca kayma tamamen kayboluyor: kırılma yok, düz cam.
-- **CSS yolları:** panel aynı yerde, aynı boyutta. `css-rgb`'de kenarda kanal
-  ayrımı görünüyor.
+- **The WebGL path:** the pattern in the middle of the panel does not budge
+  (normal `(0,0,1)`, refraction zero), and the offset grows toward the edge.
+  There is a Fresnel glow at the edge.
+- **`normal` mode:** where the bevel starts and ends shows up as color; the
+  plateau is flat blue (`(0,0,1)`), the bevel tilts sideways.
+- **`fringe` mode:** the backdrop is not drawn, everything outside the panel is
+  black; the bevel region climbs toward red. The red channel encodes the
+  inter-channel separation with a `32 px` ceiling.
+- **Turn the spread up** and you get an orange/blue fringe at the edge; going
+  from 3 samples to 8 softens it.
+- **Set IOR = 1.0** and the offset disappears entirely: no refraction, flat
+  glass.
+- **The CSS paths:** the panel is in the same place, at the same size. In
+  `css-rgb` you can see the channel separation at the edge.
 
-### Isıtma korkulukları
+### Heat guardrails
 
-`devicePixelRatio` 2'ye kelepçeli (`src/viewport.ts`), çözünürlük ölçeği
-kullanıcıda, toplam arka tampon 2.1 Mpx ile sınırlı. Sekme arka plana geçince
-döngü kendiliğinden duruyor; `Dur` düğmesi `requestAnimationFrame`'i gerçekten
-iptal ediyor (kısmak değil, durdurmak).
+`devicePixelRatio` is clamped to 2 (`src/viewport.ts`), the resolution scale is
+in the user's hands, and the total backing buffer is capped at 2.1 Mpx. The loop
+stops on its own when the tab goes to the background; the `Pause` button really
+does cancel `requestAnimationFrame` (stop it, not throttle it).
 
-## İki yolun ayarları nasıl eşitlendi
+## How the two paths were matched
 
-`feDisplacementMap`'in `scale`'i piksel cinsinden bir sayı; WebGL tarafındaki
-`uDepth = 90` + `thickness = 6` ise fizikten geliyor. İkisi farklı birimlerde,
-o yüzden sayısal olarak eşitlendi: pahın düz kısmında (panel merkezinden 180–208
-px) `refractOffsetPx` ile CSS kaymasının oranı **62** çıkıyor. Filtredeki
-`scale="62"` bu hesabın sonucu, göz kararı değil.
+`feDisplacementMap`'s `scale` is a number in pixels; the `uDepth = 90` +
+`thickness = 6` on the WebGL side comes from physics. The two are in different
+units, so they were matched numerically: on the flat part of the bevel (180–208
+px from the panel center) the ratio between `refractOffsetPx` and the CSS offset
+comes out at **62**. The `scale="62"` in the filter is the result of that
+calculation, not eyeballing.
 
-Aynı hesap dispersiyon için: `spread = 0.15`'te kırmızı ve mavi uçların kayması
-merkezden ±%9 sapıyor, dolayısıyla üç dallı filtrede
-`scale="56" / "62" / "68"`.
+The same calculation for dispersion: at `spread = 0.15` the offsets of the red
+and blue ends deviate ±9% from the center, hence `scale="56" / "62" / "68"` in
+the three-branch filter.
 
-Haritanın kendisi normal haritası **değil**, doğrudan kayma haritası: kırılma
-örneği normalin ters yönüne taşıdığı için iki kanal da eksili kodlanıyor
-(`-n.x`, `-n.y`), koordinatlar da SVG'nin y-aşağı çerçevesinde hesaplanıyor.
-İşaretlerden birini kaçırırsanız CSS paneli WebGL panelinin tam tersine büker ve
-kıyas sessizce anlamsızlaşır.
+The map itself is **not** a normal map, it is a displacement map directly: since
+the refracted sample moves opposite to the normal, both channels are encoded
+negated (`-n.x`, `-n.y`), and the coordinates are computed in SVG's y-down
+frame. Miss one of those signs and the CSS panel bends exactly opposite to the
+WebGL panel, and the comparison quietly becomes meaningless.
 
-## Deterministik ölçüm modu
+## Deterministic measurement mode
 
 ```
 http://localhost:5173/?measure=1
 ```
 
-Bu modda demo interaktif olmaktan çıkar: arka tampon 960×540'a kilitlenir,
-zaman adımı `frame / 60` sabitlenir, etkileşim kapanır. Her yapılandırma için
-30 ısınma + 180 ölçüm karesi. Toplam 13 koşu, 2376 kare: 120 Hz'lik bir ekranda
-~20 saniye, 60 Hz'de ~40. Bitince konsola **tek satır** düşer.
+In this mode the demo stops being interactive: the backing buffer is locked to
+960×540, the time step is fixed at `frame / 60`, interaction is off. 30 warmup +
+180 measurement frames per configuration. 13 runs in total, 2376 frames: about
+20 seconds on a 120 Hz display, ~40 at 60 Hz. When it finishes, **one line**
+lands on the console.
 
-Aşağıdaki satır uydurulmuş bir biçim örneği değil, gerçek bir koşudan (headless
-Chrome, Apple M2 Pro/ANGLE Metal, 960×540). `frameMsP95` dahil her alan burada
-ham hâliyle duruyor. Makaledeki tablolar bunun gibi üç koşudan derlendi; son
-hanelerde koşudan koşuya küçük oynamalar olur:
-
-```
-MEASURE {"version":1,"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36","dpr":1,"backing":{"w":960,"h":540},"vsyncMs":8.3,"timerExt":true,"cssFilterUrlSyntaxSupported":true,"panel":{"w":420,"h":260,"radius":40,"coveragePct":20.8},"dispersion":[{"samples":1,"texelFetches":1,"gpuMsMedian":0.131,"frameMsMedian":8.3,"vsyncBound":true},{"samples":3,"texelFetches":3,"gpuMsMedian":0.1635,"frameMsMedian":8.3,"vsyncBound":true},{"samples":8,"texelFetches":8,"gpuMsMedian":0.217,"frameMsMedian":8.3,"vsyncBound":true}],"msPerSample":0.01229,"msPerSampleMethod":"gpu","backdropScale":[{"scale":1,"gpuMsMedian":0.1642,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2073600},{"scale":0.5,"gpuMsMedian":0.195,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2592000},{"scale":0.25,"gpuMsMedian":0.201,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2203200}],"fringe":[{"spread":0.00805,"maxSeparationPx":0.251},{"spread":0.15,"maxSeparationPx":5.5216}],"fringeQuantizationPx":0.1255,"paths":[{"label":"baseline","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":0.1085,"vsyncBound":true},{"label":"webgl-glass","frameMsMedian":8.3,"frameMsP95":9,"droppedFrames":0,"gpuMsMedian":0.1601,"vsyncBound":true},{"label":"css-blur","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — ölçülemez"},{"label":"css-displace","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — ölçülemez"},{"label":"css-rgb","frameMsMedian":8.3,"frameMsP95":9,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — ölçülemez"}]}
-```
-
-| Faz | Ne ölçülüyor                                                          |
-| --- | --------------------------------------------------------------------- |
-| A   | dispersiyon örneği 1 / 3 / 8 → GPU ms, kare ms, örnek başına ek maliyet |
-| B   | arka plan doku ölçeği 1.0 / 0.5 / 0.25 → GPU ms, kare ms, VRAM         |
-| C   | saçak: `spread` 0.00805 (fiziksel) ve 0.15 → `readPixels` ile max ayrım |
-| D   | beş yol: baseline / webgl-glass / css-blur / css-displace / css-rgb     |
-
-Sözleşmeler:
-
-- **CSS satırlarında `gpuMsMedian` her zaman `null`** ve yanında
-  `gpuMsNote: "compositor — ölçülemez"` yazar. `backdrop-filter` bizim çizim
-  komutumuz değil; ona saat sokamıyoruz. Oraya sayı yazmak ölçmemekten kötüdür.
-- **`timerExt: false`** gelirse bütün `gpuMs*` alanları `null` kalır ve
-  `msPerSample` rAF delta'sından hesaplanır; `msPerSampleMethod: "frame"` bunu
-  açıkça söyler.
-- **Vsync tavanı 60 Hz varsayılmıyor.** Koşunun başında boş bir rAF penceresiyle
-  ekranın gerçek kare periyodu ölçülüyor (`vsyncMs`), her satırın `vsyncBound`
-  bayrağı ona göre işaretleniyor. 120 Hz'lik bir ekranda tavan 8,3 ms;
-  sabit 16,7 ms eşiği bütün satırları yanlışlıkla "takılı değil" sayardı.
-- **Sekme öne alınmalı.** `document.visibilityState !== "visible"` olursa koşu
-  iptal edilir ve `MEASURE {"error":"hidden"}` basılır.
-- Saçak kuantizasyonu `32 / 255 ≈ 0,125 px`; JSON'da `fringeQuantizationPx`
-  olarak yazılıdır. Fiziksel yayılımın ölçümü bu adımın hemen üstünde çıkıyor —
-  alet kaba ve öyle olduğu söyleniyor.
-
-Sayılar makineye özeldir. Yazıdaki tablo tek bir makinenin hikâyesi.
-
-## Dosya düzeni
+The line below is not a made-up format sample, it is from a real run (headless
+Chrome, Apple M2 Pro/ANGLE Metal, 960×540). Every field, `frameMsP95` included,
+sits here in raw form. The tables in the article were assembled from three runs
+like this one; the last digits wobble a little from run to run:
 
 ```
-index.html                     sahne + CSS panel + SVG filtre tanımları + kontroller
+MEASURE {"version":1,"userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36","dpr":1,"backing":{"w":960,"h":540},"vsyncMs":8.3,"timerExt":true,"cssFilterUrlSyntaxSupported":true,"panel":{"w":420,"h":260,"radius":40,"coveragePct":20.8},"dispersion":[{"samples":1,"texelFetches":1,"gpuMsMedian":0.131,"frameMsMedian":8.3,"vsyncBound":true},{"samples":3,"texelFetches":3,"gpuMsMedian":0.1635,"frameMsMedian":8.3,"vsyncBound":true},{"samples":8,"texelFetches":8,"gpuMsMedian":0.217,"frameMsMedian":8.3,"vsyncBound":true}],"msPerSample":0.01229,"msPerSampleMethod":"gpu","backdropScale":[{"scale":1,"gpuMsMedian":0.1642,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2073600},{"scale":0.5,"gpuMsMedian":0.195,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2592000},{"scale":0.25,"gpuMsMedian":0.201,"frameMsMedian":8.3,"vsyncBound":true,"vramBytes":2203200}],"fringe":[{"spread":0.00805,"maxSeparationPx":0.251},{"spread":0.15,"maxSeparationPx":5.5216}],"fringeQuantizationPx":0.1255,"paths":[{"label":"baseline","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":0.1085,"vsyncBound":true},{"label":"webgl-glass","frameMsMedian":8.3,"frameMsP95":9,"droppedFrames":0,"gpuMsMedian":0.1601,"vsyncBound":true},{"label":"css-blur","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — not measurable"},{"label":"css-displace","frameMsMedian":8.3,"frameMsP95":9.005,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — not measurable"},{"label":"css-rgb","frameMsMedian":8.3,"frameMsP95":9,"droppedFrames":0,"gpuMsMedian":null,"vsyncBound":true,"gpuMsNote":"compositor — not measurable"}]}
+```
+
+| Phase | What is measured                                                       |
+| ----- | ---------------------------------------------------------------------- |
+| A     | dispersion samples 1 / 3 / 8 → GPU ms, frame ms, added cost per sample  |
+| B     | backdrop texture scale 1.0 / 0.5 / 0.25 → GPU ms, frame ms, VRAM        |
+| C     | fringe: `spread` 0.00805 (physical) and 0.15 → max separation via `readPixels` |
+| D     | five paths: baseline / webgl-glass / css-blur / css-displace / css-rgb  |
+
+The contracts:
+
+- **On CSS rows `gpuMsMedian` is always `null`**, with
+  `gpuMsNote: "compositor — not measurable"` next to it. `backdrop-filter` is not
+  our draw call; we cannot get a clock into it. Writing a number there would be
+  worse than not measuring.
+- **If `timerExt: false`** comes back, every `gpuMs*` field stays `null` and
+  `msPerSample` is computed from the rAF delta; `msPerSampleMethod: "frame"`
+  says so plainly.
+- **The vsync ceiling is not assumed to be 60 Hz.** At the start of the run the
+  display's real frame period is measured with an empty rAF window (`vsyncMs`),
+  and each row's `vsyncBound` flag is set against it. On a 120 Hz display the
+  ceiling is 8.3 ms; a fixed 16.7 ms threshold would wrongly count every row as
+  "not bound".
+- **The tab has to be in the foreground.** If
+  `document.visibilityState !== "visible"`, the run is aborted and
+  `MEASURE {"error":"hidden"}` is printed.
+- The fringe quantization is `32 / 255 ≈ 0.125 px`; it is written into the JSON
+  as `fringeQuantizationPx`. The measurement of the physical spread comes out
+  just above that step — the instrument is coarse, and it says so.
+
+The numbers are specific to the machine. The table in the article is the story
+of a single machine.
+
+## File layout
+
+```
+index.html                     stage + CSS panel + SVG filter defs + controls
 src/
-  main.ts                      bootstrap, kontroller, döngü, ?measure=1 dalı
-  renderer.ts                  WebGL2 kurulumu, FBO akışı, panel çizimi
-  measure.ts                   deterministik koşu listesi, MEASURE {json}
-  hud.ts                       FPS / kare ms / GPU ms / kapsama / VRAM
-  gpu-timer.ts                 EXT_disjoint_timer_query_webgl2 sarmalayıcı
-  gl.ts                        derleme/link + satır numaralı hata çıktısı
+  main.ts                      bootstrap, controls, loop, ?measure=1 branch
+  renderer.ts                  WebGL2 setup, FBO flow, panel draw
+  measure.ts                   deterministic run list, MEASURE {json}
+  hud.ts                       FPS / frame ms / GPU ms / coverage / VRAM
+  gpu-timer.ts                 EXT_disjoint_timer_query_webgl2 wrapper
+  gl.ts                        compile/link + error output with line numbers
   fbo.ts                       RGBA8 render target + CLAMP_TO_EDGE
-  optics.ts                    refract / IOR / Abbe / Schlick — GLSL'in ikizi
-  sdf2d.ts                     sdRoundedBox / glassHeight / glassNormal ikizi
-  displacement-map.ts          SVG feDisplacementMap haritası (saf üretim)
-  css-glass.ts                 filtre bağlama + backdrop-filter modu + destek testi
-  fringe.ts                    saçak kod çözme (R kanalı -> piksel)
-  coverage.ts                  yuvarlatılmış dikdörtgen alanı, kapsama yüzdesi
-  vram.ts                      arka plan hedeflerinin bayt hesabı
-  viewport.ts                  dpr kelepçesi, ölçek, piksel bütçesi
-  stats.ts                     medyan + yüzdelik
-  style.css                    sahne, .glass kuralı, HUD, kontroller
+  optics.ts                    refract / IOR / Abbe / Schlick — the GLSL twin
+  sdf2d.ts                     sdRoundedBox / glassHeight / glassNormal twin
+  displacement-map.ts          SVG feDisplacementMap map (pure generation)
+  css-glass.ts                 filter binding + backdrop-filter mode + support test
+  fringe.ts                    fringe decoding (R channel -> pixels)
+  coverage.ts                  rounded rectangle area, coverage percent
+  vram.ts                      byte math for the backdrop targets
+  viewport.ts                  dpr clamp, scale, pixel budget
+  stats.ts                     median + percentile
+  style.css                    stage, the .glass rule, HUD, controls
   shaders/
-    glass.frag.glsl            camın tamamı (SDF + refract + dispersiyon + Fresnel)
-    panel.vert.glsl            gl_VertexID'den panel quad'ı
-    backdrop.frag.glsl         keskin kenarlı arka plan deseni
-    blit.vert.glsl             gl_VertexID'den tam ekran üçgeni
-test/                          10 dosya, 84 test (tarayıcısız)
+    glass.frag.glsl            the whole glass (SDF + refract + dispersion + Fresnel)
+    panel.vert.glsl            panel quad from gl_VertexID
+    backdrop.frag.glsl         sharp-edged backdrop pattern
+    blit.vert.glsl             fullscreen triangle from gl_VertexID
+test/                          10 files, 84 tests (browserless)
 ```
 
-## Lisans
+## License
 
-MIT — bkz. `LICENSE`.
+MIT — see `LICENSE`.

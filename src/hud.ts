@@ -9,10 +9,10 @@ export interface HudInfo {
   ior: number;
   spread: number;
   backdropScale: number;
-  /** Arka tampon (VRAM hesabı) — CSS boyutundan farklı olabilir. */
+  /** Backing buffer (VRAM math) — can differ from the CSS size. */
   backingWidth: number;
   backingHeight: number;
-  /** Sahnenin CSS boyutu (kapsama yüzdesi panel ölçüleriyle aynı birimde). */
+  /** CSS size of the stage (coverage percent uses the same unit as the panel dims). */
   stageWidth: number;
   stageHeight: number;
   timerSource: "gpu" | "raf";
@@ -75,19 +75,19 @@ export function createHud(el: HTMLElement): Hud {
 
     el.innerHTML =
       row("FPS", fmt(fps, 1)) +
-      row("kare ms (medyan)", fmt(frameMs)) +
+      row("frame ms (median)", fmt(frameMs)) +
       row(
-        info.timerSource === "gpu" ? "GPU ms (medyan)" : "GPU ms (uzantı yok)",
+        info.timerSource === "gpu" ? "GPU ms (median)" : "GPU ms (no ext.)",
         info.timerSource === "gpu" ? fmt(gpuMs, 3) : "—",
       ) +
-      row("yol", info.path) +
-      row("dispersiyon örneği", String(info.samples)) +
+      row("path", info.path) +
+      row("dispersion samples", String(info.samples)) +
       row("IOR", fmt(info.ior, 3)) +
-      row("yayılım", fmt(info.spread, 3)) +
-      row("arka plan ölçeği", fmt(info.backdropScale, 2)) +
-      row("arka tampon", `${info.backingWidth}×${info.backingHeight}`) +
-      row("panel kapsama", `%${fmt(coverage, 2)}`) +
-      row("arka plan VRAM", `${fmt(vram.total / 1048576, 2)} MB`) +
+      row("spread", fmt(info.spread, 3)) +
+      row("backdrop scale", fmt(info.backdropScale, 2)) +
+      row("backing buffer", `${info.backingWidth}×${info.backingHeight}`) +
+      row("panel coverage", `${fmt(coverage, 2)}%`) +
+      row("backdrop VRAM", `${fmt(vram.total / 1048576, 2)} MB`) +
       (note ? `<div class="hud-note">${note}</div>` : "");
   };
 

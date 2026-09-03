@@ -3,7 +3,7 @@
 uniform vec2 uResolution;
 uniform vec2 uPanelCenter;
 uniform vec2 uPanelHalf;
-uniform float uPad; // yumuşak kenar için birkaç piksel taşma
+uniform float uPad; // a few pixels of overhang for the soft edge
 
 void main() {
   // gl_VertexID: 0 -> (0,0), 1 -> (1,0), 2 -> (0,1), 3 -> (1,1)

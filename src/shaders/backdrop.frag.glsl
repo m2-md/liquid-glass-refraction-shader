@@ -1,9 +1,9 @@
 #version 300 es
 precision highp float;
 
-// Camın arkasında duran desen. Kırılma "taşıma" olduğu için desenin kenarları
-// KESKİN olmak zorunda: yumuşak bir gradyanda pikselin yer değiştirdiğini gözle
-// göremezsiniz. Bu yüzden her katman step() ile eşikleniyor.
+// The pattern that sits behind the glass. Because refraction is "displacement",
+// the edges of the pattern have to be SHARP: on a soft gradient you cannot see with
+// your eye that a pixel has moved. That is why every layer is thresholded with step().
 
 uniform vec2 uResolution;
 uniform float uTime;
@@ -19,14 +19,14 @@ void main() {
   vec2 px = gl_FragCoord.xy;
   vec2 uv = px / uResolution;
 
-  // 1) yatay bantlar — dikey kaymayı okunur kılar
+  // 1) horizontal bands — make the vertical displacement readable
   float band = step(0.5, fract(px.y / 18.0));
 
-  // 2) nokta ızgarası — yatay kaymayı okunur kılar
+  // 2) dot grid — makes the horizontal displacement readable
   vec2 cell = fract(px / 48.0) - 0.5;
   float dots = 1.0 - step(0.16, length(cell));
 
-  // 3) kayan diyagonal — sahne durağan kalmasın
+  // 3) sliding diagonal — keeps the scene from standing still
   float diag = step(0.62, fract((px.x + px.y) / 96.0 - uTime * 0.12));
 
   vec3 col = mix(PAPER, INK, band * 0.6);

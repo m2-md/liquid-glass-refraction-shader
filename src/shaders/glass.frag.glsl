@@ -6,11 +6,11 @@ precision highp int;
 #define MODE_GLASS 0
 #define MODE_NORMAL 1
 #define MODE_FRINGE 2
-// Saçak kodlamasının tavanı (piksel). fringe.ts'teki FRINGE_SCALE_PX ile AYNI.
+// Ceiling of the fringe encoding (pixels). SAME as FRINGE_SCALE_PX in fringe.ts.
 #define FRINGE_SCALE 32.0
 
-// Panel geometrisi ve malzeme. Arka plan örneklemesinin uniform'ları
-// sampleBackdrop'un hemen üstünde bildiriliyor.
+// Panel geometry and material. The backdrop sampling uniforms are declared
+// right above sampleBackdrop.
 uniform vec2 uPanelCenter;
 uniform vec2 uPanelHalf;
 uniform float uRadius;
@@ -28,15 +28,15 @@ uniform vec3 uTint;
 
 out vec4 outColor;
 
-// p: panel merkezine göre piksel koordinatı
-// b: yarı boyut (piksel), r: köşe yarıçapı (piksel)
+// p: pixel coordinate relative to the panel center
+// b: half size (pixels), r: corner radius (pixels)
 float sdRoundedBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
-// d: kenara işaretli mesafe (içeride negatif), w: pah genişliği (piksel)
-// Kenarda 0, pahın bittiği yerde 1 döner.
+// d: signed distance to the edge (negative inside), w: bevel width (pixels)
+// Returns 0 at the edge and 1 where the bevel ends.
 float glassHeight(float d, float w) {
   float x = clamp(-d / max(w, 1e-3), 0.0, 1.0);
   float t = 1.0 - x;
@@ -58,12 +58,12 @@ vec3 glassNormal(
   return normalize(vec3(-hx * k, -hy * k, 1.0));
 }
 
-// n: yüzey normali, eta: n1/n2, depth: cam kalınlığı (piksel)
-// Dönen değer arka plan dokusunda kaç piksel yana kayacağımız.
+// n: surface normal, eta: n1/n2, depth: glass thickness (pixels)
+// The return value is how many pixels we shift inside the backdrop texture.
 vec2 refractOffset(vec3 n, float eta, float depth) {
-  vec3 i = vec3(0.0, 0.0, -1.0); // ortografik bakış: ekrana dik giriyoruz
+  vec3 i = vec3(0.0, 0.0, -1.0); // orthographic view: we enter perpendicular to the screen
   vec3 r = refract(i, n, eta);
-  if (dot(r, r) < 0.5) return vec2(0.0); // tam iç yansıma
+  if (dot(r, r) < 0.5) return vec2(0.0); // total internal reflection
   return r.xy * (depth / max(abs(r.z), 1e-3));
 }
 
@@ -73,17 +73,17 @@ uniform vec2 uHalfTexel;
 
 vec3 sampleBackdrop(vec2 fragPx) {
   vec2 uv = fragPx / uResolution;
-  // Yarım texel içeri kırp: kenarda LINEAR filtrenin doku dışına uzanmasını engeller.
+  // Clamp half a texel inward: keeps the LINEAR filter from reaching outside the texture at the edge.
   return texture(uBackdrop, clamp(uv, uHalfTexel, 1.0 - uHalfTexel)).rgb;
 }
 
-// Schlick yaklaşığı — optics.ts'teki fresnelSchlick ile aynı formül.
+// Schlick approximation — the same formula as fresnelSchlick in optics.ts.
 float fresnelSchlick(float cosTheta, float f0) {
   float c = clamp(1.0 - cosTheta, 0.0, 1.0);
   return f0 + (1.0 - f0) * pow(c, 5.0);
 }
 
-// t: 0 kırmızı ucu, 1 mavi ucu. Üç tepeli kaba bir spektrum ağırlığı.
+// t: 0 red end, 1 blue end. A coarse three-peaked spectrum weight.
 vec3 spectrumWeight(float t) {
   return vec3(
     exp(-16.0 * (t - 0.15) * (t - 0.15)),
@@ -102,20 +102,20 @@ vec3 refractBackdrop(vec2 fragPx, vec3 n, float ior, float spread, float depth) 
   for (int i = 0; i < MAX_SAMPLES; i++) {
     if (i >= uSamples) break;
     float t = float(i) / float(uSamples - 1);
-    float ni = ior + spread * (t - 0.5);      // mavi uç daha yüksek indis
+    float ni = ior + spread * (t - 0.5);      // the blue end gets the higher index
     vec2 off = refractOffset(n, 1.0 / ni, depth);
     vec3 w = spectrumWeight(t);
     sum += sampleBackdrop(fragPx + off) * w;
     wsum += w;
   }
-  // Her kanal kendi ağırlık toplamına bölünüyor: beyaz beyaz kalıyor.
+  // Each channel is divided by its own weight sum: white stays white.
   return sum / max(wsum, vec3(1e-4));
 }
 
 void main() {
   vec2 p = gl_FragCoord.xy - uPanelCenter;
   float d = sdRoundedBox(p, uPanelHalf, uRadius);
-  float alpha = 1.0 - smoothstep(-1.0, 1.0, d); // 2 piksellik yumuşak kenar
+  float alpha = 1.0 - smoothstep(-1.0, 1.0, d); // 2-pixel soft edge
   if (alpha <= 0.0) discard;
 
   vec3 n = glassNormal(p, uPanelHalf, uRadius, uBevel, uThickness, uNormalEps);
@@ -125,7 +125,7 @@ void main() {
     return;
   }
 
-  // Kanallar arası ayrımı piksel olarak FRINGE_SCALE'e göre kodla.
+  // Encode the inter-channel separation in pixels, relative to FRINGE_SCALE.
   if (uMode == MODE_FRINGE) {
     vec2 offR = refractOffset(n, 1.0 / (uIor - uSpread * 0.5), uDepth);
     vec2 offB = refractOffset(n, 1.0 / (uIor + uSpread * 0.5), uDepth);
@@ -138,7 +138,7 @@ void main() {
 
   vec3 view = vec3(0.0, 0.0, 1.0);
   float f = fresnelSchlick(max(dot(n, view), 0.0), uF0);
-  vec3 sky = uTint * (0.55 + 0.45 * n.y); // ucuz ortam: normalden gelen gradyan
+  vec3 sky = uTint * (0.55 + 0.45 * n.y); // cheap ambient: a gradient off the normal
   vec3 col = mix(refr, sky, f);
 
   vec3 l = normalize(vec3(-0.35, 0.72, 0.60));

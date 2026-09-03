@@ -2,7 +2,7 @@
   "name": "liquid-glass-refraction-shader",
   "private": true,
   "version": "1.0.0",
-  "description": "Ekran uzayında kırılma: WebGL2 sıvı cam paneli (IOR, kromatik dispersiyon, Fresnel) ile CSS backdrop-filter + SVG feDisplacementMap yolunun ölçümlü kıyası",
+  "description": "Screen-space refraction in WebGL2: simulated index of refraction (IOR), chromatic dispersion, and Fresnel reflections compared against CSS backdrop-filter and SVG feDisplacementMap.",
   "type": "module",
   "license": "MIT",
   "scripts": {

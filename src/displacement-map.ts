@@ -9,12 +9,12 @@ export interface PanelShape {
 }
 
 /**
- * feDisplacementMap kodlaması: R kanalı x sapması, G kanalı y sapması,
- * ikisi de 0.5 merkezli. Sapmanın büyüklüğünü filtredeki `scale` belirler.
+ * feDisplacementMap encoding: the R channel carries the x offset, the G channel the
+ * y offset, both centered on 0.5. The `scale` in the filter sets the magnitude.
  *
- * Harita normali DEĞİL, kaymayı kodluyor: kırılma örneği normalin ters yönüne
- * taşıdığı için iki kanal da eksili. Koordinatlar SVG'nin y-aşağı çerçevesinde
- * hesaplandığından ayrıca bir çevirmeye gerek kalmıyor.
+ * The map encodes the offset, NOT the normal: the refracted sample moves opposite to
+ * the normal, so both channels are negated. The coordinates are computed in SVG's
+ * y-down frame, so no extra flip is needed.
  */
 export function buildDisplacementRGBA(shape: PanelShape): Uint8ClampedArray {
   const { width, height, radius, bevel, thickness } = shape;
@@ -44,7 +44,7 @@ export function toPngDataUrl(
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2D bağlamı alınamadı");
+  if (!ctx) throw new Error("Could not get a 2D context");
   const image = new ImageData(width, height);
   image.data.set(data);
   ctx.putImageData(image, 0, 0);

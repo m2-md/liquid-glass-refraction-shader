@@ -4,9 +4,9 @@ interface TimerExtension {
 }
 
 /**
- * EXT_disjoint_timer_query_webgl2 sarmalayıcısı.
- * Tek aktif sorgu; sonuçlar birkaç kare gecikmeyle gelir ve BEKLENMEZ.
- * `gl.finish()` YASAK — hattı senkronlamak ölçtüğünüz şeyi değiştirir.
+ * EXT_disjoint_timer_query_webgl2 wrapper.
+ * One active query; results arrive a few frames late and are NEVER waited on.
+ * `gl.finish()` is FORBIDDEN — syncing the pipeline changes the thing you measure.
  */
 export class GpuTimer {
   readonly available: boolean;
@@ -44,8 +44,8 @@ export class GpuTimer {
     const { gl } = this;
 
     if (gl.getParameter(this.ext.GPU_DISJOINT_EXT)) {
-      // GPU saati kesildi (güç durumu değişimi, bağlam anahtarlama):
-      // eldeki bütün ölçümler çöp.
+      // The GPU clock went disjoint (power state change, context switch):
+      // every measurement in flight is garbage.
       for (const query of this.pending) this.free.push(query);
       this.pending.length = 0;
       return;
@@ -61,12 +61,12 @@ export class GpuTimer {
     }
   }
 
-  /** Yeni bir koşuya girerken biriken örnekleri at. */
+  /** Throw away the accumulated samples when entering a new run. */
   reset(): void {
     this.samplesMs.length = 0;
   }
 
-  /** Canlı HUD için kayan pencere: dizi sonsuza kadar büyümesin. */
+  /** Sliding window for the live HUD: keep the array from growing forever. */
   trim(max: number): void {
     if (this.samplesMs.length > max) {
       this.samplesMs.splice(0, this.samplesMs.length - max);

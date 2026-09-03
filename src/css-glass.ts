@@ -25,8 +25,8 @@ export function applyDisplacementMap(shape: PanelShape): void {
 }
 
 /**
- * Dikkat: bu bir SÖZDİZİMİ kontrolü. Tarayıcı "evet, bu değeri ayrıştırabiliyorum"
- * diyor; "evet, bu filtreyi uyguluyorum" demiyor. Ölçüm çıktısında da böyle etiketli.
+ * Careful: this is a SYNTAX check. The browser is saying "yes, I can parse this
+ * value", not "yes, I apply this filter". The measurement output labels it that way too.
  */
 export function backdropFilterUrlSyntaxSupported(): boolean {
   return (
@@ -37,7 +37,7 @@ export function backdropFilterUrlSyntaxSupported(): boolean {
   );
 }
 
-/** `.glass` panelinin backdrop-filter değerini değiştirir. */
+/** Changes the backdrop-filter value of the `.glass` panel. */
 export function setCssMode(element: HTMLElement, mode: CssMode): void {
   element.hidden = mode === "none";
   element.style.backdropFilter = FILTER[mode];

@@ -94,7 +94,7 @@ p.lede {
     0 12px 32px rgb(0 0 0 / 0.35);
 }
 
-/* Panel sahnenin tam ortasında: WebGL yolu da aynı merkezi kullanıyor. */
+/* The panel sits dead center in the stage: the WebGL path uses the same center. */
 #cssGlass {
   left: 50%;
   top: 50%;
@@ -203,7 +203,7 @@ code {
   color: var(--accent);
 }
 
-/* Ölçüm modu: etkileşim kapalı, sahne sabit 960×540. */
+/* Measurement mode: interaction off, stage pinned at 960×540. */
 body.measuring .controls {
   opacity: 0.45;
   pointer-events: none;

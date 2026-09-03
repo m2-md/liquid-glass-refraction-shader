@@ -23,7 +23,7 @@ export const MODE_NORMAL = 1;
 export const MODE_FRINGE = 2;
 export type ViewMode = 0 | 1 | 2;
 
-/** Panelin nasıl kurulduğu. Arka plan her üç durumda da aynı canvas'ta. */
+/** How the panel is built. The backdrop is on the same canvas in all three cases. */
 export type GlassPath = "webgl" | "css" | "none";
 
 export const STAGE_WIDTH = 960;
@@ -92,7 +92,7 @@ export class Renderer {
       preserveDrawingBuffer: false,
       powerPreference: "high-performance",
     });
-    if (!gl) throw new Error("WebGL2 bağlamı alınamadı");
+    if (!gl) throw new Error("Could not get a WebGL2 context");
 
     this.canvas = canvas;
     this.gl = gl;
@@ -129,12 +129,12 @@ export class Renderer {
     return this.sample.height;
   }
 
-  /** Sahnenin CSS boyutu; CSS paneliyle hizalama buradan doğrulanır. */
+  /** CSS size of the stage; alignment with the CSS panel is verified from here. */
   get cssSize(): { width: number; height: number } {
     return { width: this.cssWidth, height: this.cssHeight };
   }
 
-  /** CSS pikselinden arka tampon pikseline oran. Panel ölçüleri bununla çarpılır. */
+  /** Ratio from CSS pixel to backing-buffer pixel. Panel dimensions are scaled by it. */
   get pixelScale(): number {
     return this.canvas.width / this.cssWidth;
   }
@@ -149,7 +149,7 @@ export class Renderer {
     this.rebuildTargets();
   }
 
-  /** cssW/cssH: sahnenin CSS boyutu. dpr ve ölçek `backingSize` ile kelepçelenir. */
+  /** cssW/cssH: CSS size of the stage. dpr and scale are clamped by `backingSize`. */
   resize(
     cssWidth: number,
     cssHeight: number,
@@ -165,7 +165,7 @@ export class Renderer {
     this.rebuildTargets();
   }
 
-  /** Ölçüm modu: dpr ve pencere boyutu yok sayılır, arka tampon sabitlenir. */
+  /** Measurement mode: dpr and window size are ignored, the backing buffer is pinned. */
   setFixedSize(width: number, height: number): void {
     this.cssWidth = width;
     this.cssHeight = height;
@@ -204,15 +204,15 @@ export class Renderer {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
-  /** Arka planı FBO'ya çizip ekrana ve (gerekiyorsa) örnek hedefine kopyalar. */
+  /** Draws the backdrop into the FBO, then copies it to the screen and (if needed) the sample target. */
   captureBackdrop(time: number): void {
     const { gl, canvas, capture, sample, drawBackdrop } = this;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, capture.framebuffer);
     gl.viewport(0, 0, capture.width, capture.height);
-    drawBackdrop(time); // arka plan yalnızca BİR kez çiziliyor
+    drawBackdrop(time); // the backdrop is drawn only ONCE
 
-    // 1) yakalanan kareyi ekrana kopyala
+    // 1) copy the captured frame to the screen
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, capture.framebuffer);
     gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
     // prettier-ignore
@@ -223,7 +223,7 @@ export class Renderer {
       gl.NEAREST,
     );
 
-    // 2) camın örnekleyeceği kopyayı (istenirse küçülterek) hazırla
+    // 2) prepare the copy the glass will sample (downscaled if requested)
     if (sample !== capture) {
       gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, sample.framebuffer);
       // prettier-ignore
@@ -237,7 +237,7 @@ export class Renderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  /** Cam panelini ekrana çizer. Fragment maliyeti panelin alanıyla orantılı. */
+  /** Draws the glass panel to the screen. Fragment cost is proportional to the panel's area. */
   drawGlass(): void {
     const { gl, params } = this;
     const s = this.pixelScale;
@@ -286,8 +286,8 @@ export class Renderer {
     this.timer.begin();
 
     if (this.params.mode === MODE_FRINGE) {
-      // Saçak modunda arka plan çizilmez: panel dışı tam siyah kalsın ki
-      // readPixels yalnızca kodlanmış ayrımı okusun.
+      // In fringe mode the backdrop is not drawn: everything outside the panel stays
+      // fully black so that readPixels reads only the encoded separation.
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, this.canvas.width, this.canvas.height);
       gl.clearColor(0, 0, 0, 1);
@@ -302,7 +302,7 @@ export class Renderer {
     this.timer.poll();
   }
 
-  /** Panelin kapladığı dikdörtgeni geri okur (MODE_FRINGE için). */
+  /** Reads back the rectangle the panel covers (for MODE_FRINGE). */
   readFringe(): Uint8Array {
     const { gl } = this;
     const s = this.pixelScale;

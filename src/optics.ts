@@ -1,12 +1,12 @@
-// optics.ts — GLSL tarafındaki kırılma matematiğinin TypeScript ikizi.
-// Saf: WebGL, DOM, zamanlayıcı yok. Testlerin tamamı buradan geçiyor.
+// optics.ts — the TypeScript twin of the refraction math on the GLSL side.
+// Pure: no WebGL, no DOM, no timers. Every test runs through here.
 
 export type Vec3 = readonly [number, number, number];
 
 /**
- * GLSL refract(I, N, eta) ile birebir aynı davranış.
- * I: yüzeye gelen birim vektör, N: birim normal, eta: n1 / n2.
- * Tam iç yansımada sıfır vektör döner.
+ * Behaves exactly like GLSL refract(I, N, eta).
+ * I: incident unit vector, N: unit normal, eta: n1 / n2.
+ * Returns the zero vector on total internal reflection.
  */
 export function refract(i: Vec3, n: Vec3, eta: number): Vec3 {
   const ni = i[0] * n[0] + i[1] * n[1] + i[2] * n[2];
@@ -41,19 +41,19 @@ export function iorToEta(from: number, to: number): number {
 }
 
 /**
- * Abbe sayısı: V = (n_d - 1) / (n_F - n_C).
- * Dönen değer, mavi (486 nm) ile kırmızı (656 nm) arasındaki indis farkı.
+ * Abbe number: V = (n_d - 1) / (n_F - n_C).
+ * The return value is the index difference between blue (486 nm) and red (656 nm).
  */
 export function abbeSpread(nd: number, abbe: number): number {
   return (nd - 1) / abbe;
 }
 
-/** t: 0 = kırmızı ucu, 1 = mavi ucu. Uçlar arasında doğrusal tarama. */
+/** t: 0 = red end, 1 = blue end. A linear sweep between the two ends. */
 export function dispersedIor(nd: number, spread: number, t: number): number {
   return nd + spread * (t - 0.5);
 }
 
-/** Dik bakışta yansıma oranı: ((n1 - n2) / (n1 + n2))². */
+/** Reflectance at normal incidence: ((n1 - n2) / (n1 + n2))². */
 export function schlickF0(n1: number, n2: number): number {
   const r = (n1 - n2) / (n1 + n2);
   return r * r;

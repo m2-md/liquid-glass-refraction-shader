@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { backdropBytes } from "../src/vram";
 
 describe("backdropBytes", () => {
-  it("tam ölçekte tek hedef tutulur", () => {
+  it("keeps a single target at full scale", () => {
     expect(backdropBytes(960, 540, 1)).toEqual({
       capture: 2_073_600,
       sample: 0,
@@ -10,7 +10,7 @@ describe("backdropBytes", () => {
     });
   });
 
-  it("yarım ölçekte ikinci hedef eklenir", () => {
+  it("adds a second target at half scale", () => {
     expect(backdropBytes(960, 540, 0.5)).toEqual({
       capture: 2_073_600,
       sample: 518_400,
@@ -18,16 +18,16 @@ describe("backdropBytes", () => {
     });
   });
 
-  it("çeyrek ölçekte toplam capture'ın 1,0625 katı", () => {
+  it("makes the total 1.0625x the capture at quarter scale", () => {
     const { capture, total } = backdropBytes(960, 540, 0.25);
     expect(total / capture).toBeCloseTo(1.0625, 10);
   });
 
-  it("ölçek 1'in üstündeyse ikinci hedef üretilmez", () => {
+  it("creates no second target when the scale is above 1", () => {
     expect(backdropBytes(960, 540, 2).sample).toBe(0);
   });
 
-  it("çok küçük ölçekte bile en az 1x1 hedef", () => {
+  it("keeps at least a 1x1 target even at a very small scale", () => {
     expect(backdropBytes(4, 4, 0.01).sample).toBe(4);
   });
 });

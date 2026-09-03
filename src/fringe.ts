@@ -1,6 +1,6 @@
 export const FRINGE_SCALE_PX = 32;
 
-/** Kırmızı kanaldaki en büyük kodlanmış ayrımı piksele çevirir. */
+/** Converts the largest encoded separation in the red channel into pixels. */
 export function maxFringePx(
   pixels: Uint8Array,
   scalePx: number = FRINGE_SCALE_PX,
